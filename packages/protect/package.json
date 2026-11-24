@@ -1,0 +1,49 @@
+{
+  "name": "@verbb/protect",
+  "version": "1.0.0-dev",
+  "description": "Form protection for the browser, with challenge widgets and submission evidence for the verbb/protect Composer library.",
+  "keywords": [
+    "craftcms",
+    "spam",
+    "turnstile",
+    "recaptcha",
+    "honeypot"
+  ],
+  "homepage": "https://github.com/verbb/protect",
+  "bugs": {
+    "url": "https://github.com/verbb/protect/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/verbb/protect.git",
+    "directory": "packages/protect"
+  },
+  "license": "MIT",
+  "author": "Verbb",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "styles",
+    "README.md",
+    "LICENSE.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./styles/protect.css",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": [
+    "*.css"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepack": "npm --prefix ../.. run build",
+    "prepublishOnly": "node ../../scripts/release-version.mjs --publishable"
+  }
+}

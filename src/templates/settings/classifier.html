@@ -1,0 +1,105 @@
+{#
+    The spam classifier fields for a plugin's settings, matching `ProviderSettingsTrait`. Rendered by
+    `Protect::renderProviderSettings('classifier', {...})`. Each classifier's keys show only while it's chosen,
+    through the `protect-classifier-<classifier>` classes, which a plugin can reuse for its own fields. The classes
+    go on each field rather than a wrapper, because Craft drops the bottom margin of a wrapper's last field, which
+    would leave no gap before a plugin's own wrapped fields.
+#}
+{% import '_includes/forms' as forms %}
+{% import 'verbb-base/_macros' as macros %}
+
+{% set spamClassifier = settings.spamClassifier %}
+{% set classifierClass = {
+    akismet: ['protect-classifier-akismet', spamClassifier != 'akismet' ? 'hidden'] | filter,
+    cleantalk: ['protect-classifier-cleantalk', spamClassifier != 'cleantalk' ? 'hidden'] | filter,
+    oopspam: ['protect-classifier-oopspam', spamClassifier != 'oopspam' ? 'hidden'] | filter,
+} %}
+
+{{ forms.selectField({
+    label: 'Spam Classifier' | t(pluginHandle),
+    instructions: instructions ?? ('Send each submission to a service that says whether it’s spam.' | t(pluginHandle)),
+    id: 'spamClassifier',
+    name: 'spamClassifier',
+    value: spamClassifier,
+    toggle: true,
+    targetPrefix: '.protect-classifier-',
+    options: [
+        { label: 'None' | t(pluginHandle), value: '' },
+        { label: 'Akismet' | t(pluginHandle), value: 'akismet' },
+        { label: 'CleanTalk' | t(pluginHandle), value: 'cleantalk' },
+        { label: 'OOPSpam' | t(pluginHandle), value: 'oopspam' },
+    ],
+    errors: settings.getErrors('spamClassifier'),
+    warning: macros.configWarning('spamClassifier', pluginHandle),
+}) }}
+
+<p class="light {{ classifierClass.akismet | join(' ') }}">{{ 'Akismet receives the submitted text, the author’s name and email, and the visitor’s IP address, browser and referring page.' | t(pluginHandle) }}</p>
+
+{{ forms.autosuggestField({
+    fieldClass: classifierClass.akismet,
+    label: 'Akismet API Key' | t(pluginHandle),
+    name: 'akismetApiKey',
+    value: secrets.akismetApiKey ?? settings.akismetApiKey,
+    suggestEnvVars: suggestEnvVars,
+    errors: settings.getErrors('akismetApiKey'),
+    warning: macros.configWarning('akismetApiKey', pluginHandle),
+}) }}
+
+{{ forms.autosuggestField({
+    fieldClass: classifierClass.akismet,
+    label: 'Akismet Site URL' | t(pluginHandle),
+    instructions: 'Defaults to this site’s base URL.' | t(pluginHandle),
+    name: 'akismetBlogUrl',
+    value: settings.akismetBlogUrl,
+    suggestEnvVars: false,
+    errors: settings.getErrors('akismetBlogUrl'),
+    warning: macros.configWarning('akismetBlogUrl', pluginHandle),
+}) }}
+
+{{ forms.lightswitchField({
+    fieldClass: classifierClass.akismet,
+    label: 'Akismet Test Mode' | t(pluginHandle),
+    instructions: 'Tell Akismet these are test requests, so they don’t affect its results for your site.' | t(pluginHandle),
+    name: 'akismetTestMode',
+    on: settings.akismetTestMode,
+    errors: settings.getErrors('akismetTestMode'),
+    warning: macros.configWarning('akismetTestMode', pluginHandle),
+}) }}
+
+<p class="light {{ classifierClass.cleantalk | join(' ') }}">{{ 'CleanTalk receives the submitted text, the author’s name and email, and the visitor’s IP address, browser and referring page.' | t(pluginHandle) }}</p>
+
+{{ forms.autosuggestField({
+    fieldClass: classifierClass.cleantalk,
+    label: 'CleanTalk Access Key' | t(pluginHandle),
+    name: 'cleantalkApiKey',
+    value: secrets.cleantalkApiKey ?? settings.cleantalkApiKey,
+    suggestEnvVars: suggestEnvVars,
+    errors: settings.getErrors('cleantalkApiKey'),
+    warning: macros.configWarning('cleantalkApiKey', pluginHandle),
+}) }}
+
+<p class="light {{ classifierClass.oopspam | join(' ') }}">{{ 'OOPSpam receives the submitted text, the author’s email and the visitor’s IP address.' | t(pluginHandle) }}</p>
+
+{{ forms.autosuggestField({
+    fieldClass: classifierClass.oopspam,
+    label: 'OOPSpam API Key' | t(pluginHandle),
+    name: 'oopspamApiKey',
+    value: secrets.oopspamApiKey ?? settings.oopspamApiKey,
+    suggestEnvVars: suggestEnvVars,
+    errors: settings.getErrors('oopspamApiKey'),
+    warning: macros.configWarning('oopspamApiKey', pluginHandle),
+}) }}
+
+{{ forms.textField({
+    fieldClass: classifierClass.oopspam,
+    type: 'number',
+    label: 'OOPSpam Spam Score' | t(pluginHandle),
+    instructions: 'The score from 1 to 6 at which OOPSpam’s answer counts as spam. Lower catches more.' | t(pluginHandle),
+    name: 'oopspamSpamThreshold',
+    value: settings.oopspamSpamThreshold,
+    min: 1,
+    max: 6,
+    size: 4,
+    errors: settings.getErrors('oopspamSpamThreshold'),
+    warning: macros.configWarning('oopspamSpamThreshold', pluginHandle),
+}) }}

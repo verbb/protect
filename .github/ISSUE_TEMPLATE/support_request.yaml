@@ -1,0 +1,16 @@
+name: Question
+description: Ask a question about this package. Do not use this to submit bug reports.
+labels: 'question'
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Ask your question about the package.
+    validations:
+      required: true
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any other context that may help answer your question.

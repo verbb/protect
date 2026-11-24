@@ -1,0 +1,19 @@
+{
+  "name": "verbb-protect-workspace",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/protect"
+  ],
+  "scripts": {
+    "build": "tsc -p packages/protect/tsconfig.json",
+    "build:bundle": "node scripts/build-bundle.mjs",
+    "typecheck": "tsc -p packages/protect/tsconfig.json --noEmit && tsc -p packages/protect/bundle/tsconfig.json",
+    "test": "npm run build && node --test packages/protect/tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "~0.28.2",
+    "playwright": "~1.65.1",
+    "typescript": "^7.0.2"
+  }
+}

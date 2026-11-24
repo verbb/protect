@@ -1,0 +1,27 @@
+{
+    "version": 1,
+    "hiddenInputs": {
+        "__protect[version]": "1",
+        "__protect[preparation]": "Zjc5YWU4OWI4MDVlZmZiNmQ2MjJkNzAwYTEyZGY0NmE0NzIwZTliNDc1M2UzYjY3ODIyZmQ0OWFlMGZmOGRmOHsidiI6MSwibm9uY2UiOiJkZGNmYjZlZDY2MWJjZWUwZTNhMTIyZWI5NTlkZDJjMTNhNzU5YzljNGI2YjU2Y2YiLCJpc3N1ZWRBdCI6MTgwMDAwMDAwMCwiZXhwaXJlc0F0IjoxODAwMDg2NDAwLCJhY3Rpb24iOiJyb3VuZC10cmlwLnN1Ym1pdCIsInN1YmplY3QiOiIiLCJwbGFuIjoiMzI3YzNmMzMxNjQwMjY4MzI3OTM5YmZlYzA4ODlmNTdmYTY5ODVjODJmZjBkMDljMmI4OTYyMjY0ZTY1MTcxMSIsImhvbmV5cG90IjoiZGZhYzA2Nzc4YjE4YTdlMWExNDk3ZjQ1In0=",
+        "__protect[javascript]": "",
+        "__protect[honeypot][dfac06778b18a7e1a1497f45]": ""
+    },
+    "manifest": {
+        "version": 1,
+        "instanceId": "0806a50f611cc466036595c1",
+        "preparation": "Zjc5YWU4OWI4MDVlZmZiNmQ2MjJkNzAwYTEyZGY0NmE0NzIwZTliNDc1M2UzYjY3ODIyZmQ0OWFlMGZmOGRmOHsidiI6MSwibm9uY2UiOiJkZGNmYjZlZDY2MWJjZWUwZTNhMTIyZWI5NTlkZDJjMTNhNzU5YzljNGI2YjU2Y2YiLCJpc3N1ZWRBdCI6MTgwMDAwMDAwMCwiZXhwaXJlc0F0IjoxODAwMDg2NDAwLCJhY3Rpb24iOiJyb3VuZC10cmlwLnN1Ym1pdCIsInN1YmplY3QiOiIiLCJwbGFuIjoiMzI3YzNmMzMxNjQwMjY4MzI3OTM5YmZlYzA4ODlmNTdmYTY5ODVjODJmZjBkMDljMmI4OTYyMjY0ZTY1MTcxMSIsImhvbmV5cG90IjoiZGZhYzA2Nzc4YjE4YTdlMWExNDk3ZjQ1In0=",
+        "issuedAt": 1800000000,
+        "expiresAt": 1800086400,
+        "honeypot": "dfac06778b18a7e1a1497f45",
+        "javascript": true,
+        "challenges": [
+            {
+                "provider": "turnstile",
+                "siteKey": "fixture-site-key",
+                "action": "round-trip"
+            }
+        ],
+        "notBefore": 1800000001
+    },
+    "expiresAt": 1800086400
+}

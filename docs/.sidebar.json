@@ -1,0 +1,45 @@
+[
+    {
+        "title": "Get Started",
+        "collapsable": false,
+        "children": [
+            "get-started/installation-setup",
+            "get-started/requirements"
+        ]
+    },
+    {
+        "title": "Feature Tour",
+        "collapsable": false,
+        "children": [
+            "feature-tour/how-protect-works",
+            "feature-tour/passive-checks",
+            "feature-tour/replay-protection",
+            "feature-tour/rate-limits",
+            "feature-tour/challenges",
+            "feature-tour/spam-classification",
+            "feature-tour/results-and-findings"
+        ]
+    },
+    {
+        "title": "Developers",
+        "collapsable": false,
+        "children": [
+            "developers/integrating-an-action",
+            "developers/php-api",
+            "developers/browser-package",
+            "developers/extending-protect",
+            "developers/events",
+            "developers/custom-checks",
+            "developers/custom-challenge-providers",
+            "developers/custom-classifiers"
+        ]
+    },
+    {
+        "title": "User Guides",
+        "collapsable": false,
+        "children": [
+            "user-guides/protect-a-feedback-form",
+            "user-guides/protect-a-contact-form"
+        ]
+    }
+]

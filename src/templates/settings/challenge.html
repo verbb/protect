@@ -1,0 +1,165 @@
+{#
+    The challenge provider fields for a plugin's settings, matching `ProviderSettingsTrait`. Rendered by
+    `Protect::renderProviderSettings('challenge', {...})`. Each provider's keys show only while it's chosen,
+    through the `protect-challenge-<provider>` classes, which a plugin can reuse for its own fields. The classes
+    go on each field rather than a wrapper, because Craft drops the top margin of a wrapper's first field and the
+    bottom margin of its last, which would leave no gap between neighbouring wrappers.
+#}
+{% import '_includes/forms' as forms %}
+{% import 'verbb-base/_macros' as macros %}
+
+{% set challengeProvider = settings.challengeProvider %}
+{% set providerClass = {
+    turnstile: ['protect-challenge-turnstile', challengeProvider != 'turnstile' ? 'hidden'] | filter,
+    recaptcha: ['protect-challenge-recaptcha', challengeProvider != 'recaptcha' ? 'hidden'] | filter,
+    hcaptcha: ['protect-challenge-hcaptcha', challengeProvider != 'hcaptcha' ? 'hidden'] | filter,
+    friendlyCaptcha: ['protect-challenge-friendly-captcha', challengeProvider != 'friendly-captcha' ? 'hidden'] | filter,
+    any: ['protect-challenge-turnstile', 'protect-challenge-recaptcha', 'protect-challenge-hcaptcha', 'protect-challenge-friendly-captcha', not challengeProvider ? 'hidden'] | filter,
+} %}
+
+{{ forms.selectField({
+    label: 'Challenge Provider' | t(pluginHandle),
+    instructions: 'Ask a third-party service to check that each visitor is a person.' | t(pluginHandle),
+    id: 'challengeProvider',
+    name: 'challengeProvider',
+    value: challengeProvider,
+    errors: settings.getErrors('challengeProvider'),
+    warning: macros.configWarning('challengeProvider', pluginHandle),
+    toggle: true,
+    targetPrefix: '.protect-challenge-',
+    options: [
+        { label: 'None' | t(pluginHandle), value: '' },
+        { label: 'Cloudflare Turnstile' | t(pluginHandle), value: 'turnstile' },
+        { label: 'reCAPTCHA v3' | t(pluginHandle), value: 'recaptcha' },
+        { label: 'hCaptcha' | t(pluginHandle), value: 'hcaptcha' },
+        { label: 'Friendly Captcha' | t(pluginHandle), value: 'friendly-captcha' },
+    ],
+}) }}
+
+{{ forms.autosuggestField({
+    fieldClass: providerClass.turnstile,
+    label: 'Turnstile Site Key' | t(pluginHandle),
+    name: 'turnstileKey',
+    value: settings.turnstileKey,
+    suggestEnvVars: suggestEnvVars,
+    errors: settings.getErrors('turnstileKey'),
+    warning: macros.configWarning('turnstileKey', pluginHandle),
+}) }}
+
+{{ forms.autosuggestField({
+    fieldClass: providerClass.turnstile,
+    label: 'Turnstile Secret Key' | t(pluginHandle),
+    name: 'turnstileSecret',
+    value: secrets.turnstileSecret ?? settings.turnstileSecret,
+    suggestEnvVars: suggestEnvVars,
+    errors: settings.getErrors('turnstileSecret'),
+    warning: macros.configWarning('turnstileSecret', pluginHandle),
+}) }}
+
+{{ forms.autosuggestField({
+    fieldClass: providerClass.recaptcha,
+    label: 'reCAPTCHA Site Key' | t(pluginHandle),
+    name: 'recaptchaKey',
+    value: settings.recaptchaKey,
+    suggestEnvVars: suggestEnvVars,
+    errors: settings.getErrors('recaptchaKey'),
+    warning: macros.configWarning('recaptchaKey', pluginHandle),
+}) }}
+
+{{ forms.autosuggestField({
+    fieldClass: providerClass.recaptcha,
+    label: 'reCAPTCHA Secret Key' | t(pluginHandle),
+    name: 'recaptchaSecret',
+    value: secrets.recaptchaSecret ?? settings.recaptchaSecret,
+    suggestEnvVars: suggestEnvVars,
+    errors: settings.getErrors('recaptchaSecret'),
+    warning: macros.configWarning('recaptchaSecret', pluginHandle),
+}) }}
+
+{# The score is a float, so 1.0 would render as `1` and match no option. A saved score between the
+   listed ones is offered too, so saving keeps it. #}
+{% set minScore = settings.recaptchaMinScore ?? 0.5 %}
+{% set minScoreValue = minScore == minScore | round(1) ? '%.1F' | format(minScore) : minScore ~ '' %}
+{% set minScoreOptions = {} %}
+{% for tenth in 0..10 %}
+    {% set option = '%.1F' | format(tenth / 10) %}
+    {% set minScoreOptions = minScoreOptions | merge({ (option): option }) %}
+{% endfor %}
+{% if minScoreOptions[minScoreValue] is not defined %}
+    {% set minScoreOptions = minScoreOptions | merge({ (minScoreValue): minScoreValue }) %}
+{% endif %}
+
+{{ forms.selectField({
+    fieldClass: providerClass.recaptcha,
+    label: 'Minimum Score' | t(pluginHandle),
+    instructions: 'The score a visitor needs to pass, from 0.0 (likely a bot) to 1.0 (likely a person).' | t(pluginHandle),
+    name: 'recaptchaMinScore',
+    value: minScoreValue,
+    options: minScoreOptions,
+    errors: settings.getErrors('recaptchaMinScore'),
+    warning: macros.configWarning('recaptchaMinScore', pluginHandle),
+}) }}
+
+{{ forms.autosuggestField({
+    fieldClass: providerClass.hcaptcha,
+    label: 'hCaptcha Site Key' | t(pluginHandle),
+    name: 'hcaptchaKey',
+    value: settings.hcaptchaKey,
+    suggestEnvVars: suggestEnvVars,
+    errors: settings.getErrors('hcaptchaKey'),
+    warning: macros.configWarning('hcaptchaKey', pluginHandle),
+}) }}
+
+{{ forms.autosuggestField({
+    fieldClass: providerClass.hcaptcha,
+    label: 'hCaptcha Secret Key' | t(pluginHandle),
+    name: 'hcaptchaSecret',
+    value: secrets.hcaptchaSecret ?? settings.hcaptchaSecret,
+    suggestEnvVars: suggestEnvVars,
+    errors: settings.getErrors('hcaptchaSecret'),
+    warning: macros.configWarning('hcaptchaSecret', pluginHandle),
+}) }}
+
+{{ forms.autosuggestField({
+    fieldClass: providerClass.friendlyCaptcha,
+    label: 'Friendly Captcha Site Key' | t(pluginHandle),
+    name: 'friendlyCaptchaKey',
+    value: settings.friendlyCaptchaKey,
+    suggestEnvVars: suggestEnvVars,
+    errors: settings.getErrors('friendlyCaptchaKey'),
+    warning: macros.configWarning('friendlyCaptchaKey', pluginHandle),
+}) }}
+
+{{ forms.autosuggestField({
+    fieldClass: providerClass.friendlyCaptcha,
+    label: 'Friendly Captcha API Key' | t(pluginHandle),
+    name: 'friendlyCaptchaSecret',
+    value: secrets.friendlyCaptchaSecret ?? settings.friendlyCaptchaSecret,
+    suggestEnvVars: suggestEnvVars,
+    errors: settings.getErrors('friendlyCaptchaSecret'),
+    warning: macros.configWarning('friendlyCaptchaSecret', pluginHandle),
+}) }}
+
+{{ forms.selectField({
+    fieldClass: providerClass.friendlyCaptcha,
+    label: 'Friendly Captcha Region' | t(pluginHandle),
+    instructions: 'Use the EU service to keep verification within the European Union. It needs an account that includes it.' | t(pluginHandle),
+    name: 'friendlyCaptchaEndpoint',
+    value: settings.friendlyCaptchaEndpoint,
+    options: [
+        { label: 'Global' | t(pluginHandle), value: 'global' },
+        { label: 'EU' | t(pluginHandle), value: 'eu' },
+    ],
+    errors: settings.getErrors('friendlyCaptchaEndpoint'),
+    warning: macros.configWarning('friendlyCaptchaEndpoint', pluginHandle),
+}) }}
+
+{{ forms.lightswitchField({
+    fieldClass: providerClass.any,
+    label: 'Send IP to Provider' | t(pluginHandle),
+    instructions: 'Share the visitor’s IP address with the provider during verification.' | t(pluginHandle),
+    name: 'challengeSendIp',
+    on: settings.challengeSendIp,
+    errors: settings.getErrors('challengeSendIp'),
+    warning: macros.configWarning('challengeSendIp', pluginHandle),
+}) }}

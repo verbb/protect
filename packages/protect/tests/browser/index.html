@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Protect Browser Drivers</title>
+<link rel="icon" href="data:,">
+<h1>Protect Browser Drivers</h1>
+<p>Requires deterministic provider script routes. No live provider credentials are used.</p>
+<button id="run">Run driver checks</button>
+<pre id="result" role="status">Ready</pre>
+<div id="forms"></div>
+<script type="module">
+import { mountProtection } from '../../dist/index.js';
+const output = document.querySelector('#result');
+const container = document.querySelector('#forms');
+const check = (condition, message) => { if (!condition) throw new Error(message); checks++; };
+const rejects = async (promise, message) => { let rejected = false; try { await promise; } catch { rejected = true; } check(rejected, message); };
+// A Turnstile token arrives only after the driver has asked for one, which is now at submit.
+const executed = async (id, count) => {
+    for (let i = 0; i < 200; i++) {
+        if (window.providerFixture.turnstileExecutions.filter((item) => item === id).length >= count) return;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    throw new Error('Turnstile was not executed.');
+};
+let checks = 0;
+// Waits for a driver to reach a provider call that happens inside prepare().
+const until = async (condition, message) => {
+    for (let i = 0; i < 200; i++) {
+        if (condition()) return;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    throw new Error(message);
+};
+const make = (id, provider, key, extra = {}) => {
+    const form = document.createElement('form');
+    container.append(form);
+    const controller = mountProtection(form, {
+        version: 1, instanceId: id, preparation: `proof-${id}`,
+        issuedAt: Math.floor(Date.now() / 1000), expiresAt: Math.floor(Date.now() / 1000) + 300, honeypot: null, javascript: false,
+        challenges: [{ provider, siteKey: key, action: `action-${id}`, ...extra }],
+    }, { nonce: 'fixture-nonce' });
+    return { form, controller };
+};
+document.querySelector('#run').addEventListener('click', async (event) => {
+    event.target.disabled = true;
+    const controllers = [];
+    try {
+        const a = make('a', 'turnstile', 'site-a'), b = make('b', 'turnstile', 'site-b');
+        controllers.push(a.controller, b.controller);
+        await Promise.all(controllers.map((c) => c.ready));
+        const fixture = window.providerFixture;
+        const [aid, bid] = [...fixture.widgets.keys()];
+        const aw = fixture.widgets.get(aid), bw = fixture.widgets.get(bid);
+        check(document.querySelectorAll('script[src*="turnstile"]').length === 1, 'Turnstile script deduplication');
+        check(document.querySelector('script[src*="turnstile"]').nonce === 'fixture-nonce', 'CSP nonce');
+        check(aw.options.sitekey === 'site-a' && bw.options.sitekey === 'site-b', 'Independent site keys');
+        check(aw.options['response-field'] === false, 'Provider fields disabled');
+        check(aw.options.execution === 'execute' && aw.options.appearance === 'interaction-only', 'Turnstile renders without running');
+        check(fixture.turnstileExecutions.length === 0, 'Turnstile runs only on submit');
+        const pending = a.controller.prepare();
+        await executed(aid, 1);
+        aw.options.callback('token-a');
+        check((await pending).challenges.turnstile === 'token-a', 'Turnstile submit token');
+        check(new FormData(b.form).get('__protect[challenges][turnstile]') === '', 'Other form untouched');
+        aw.options['expired-callback']();
+        check(new FormData(a.form).get('__protect[challenges][turnstile]') === '', 'Expired token cleared');
+        const failed = a.controller.prepare();
+        await executed(aid, 2);
+        check(fixture.resets.includes(aid), 'A used widget is reset before it runs again');
+        aw.options['error-callback']('300030');
+        await rejects(failed, 'Provider error rejects preparation');
+        const retry = a.controller.prepare();
+        await executed(aid, 3);
+        aw.options.callback('fresh-token');
+        check((await retry).challenges.turnstile === 'fresh-token', 'Fresh token after error');
+        const terminal = a.controller.prepare();
+        await executed(aid, 4);
+        aw.options['error-callback']('110200');
+        await rejects(terminal, 'Terminal provider error rejects preparation');
+        const executions = fixture.turnstileExecutions.length;
+        const started = Date.now();
+        await rejects(a.controller.prepare(), 'Terminal provider error rejects the next attempt');
+        check(Date.now() - started < 1000 && fixture.turnstileExecutions.length === executions, 'Terminal provider error rejects immediately');
+        a.controller.reset();
+        const recovered = a.controller.prepare();
+        await executed(aid, 5);
+        aw.options.callback('after-reset');
+        check((await recovered).challenges.turnstile === 'after-reset', 'Reset clears a terminal provider error');
+        a.form.reset();
+        await Promise.resolve();
+        check(new FormData(a.form).get('__protect[challenges][turnstile]') === '', 'Native reset clears evidence');
+        const removed = a.controller.prepare();
+        await executed(aid, 6);
+        a.controller.destroy();
+        await rejects(removed, 'Destroy aborts pending Turnstile');
+        check(fixture.removed.includes(aid) && !fixture.removed.includes(bid), 'Isolated widget cleanup');
+        aw.options.callback('late-token');
+        check(a.form.children.length === 0, 'Late callback cannot restore removed fields');
+
+        const c = make('c', 'recaptcha-v3', 'site-c'), d = make('d', 'recaptcha-v3', 'site-d');
+        controllers.push(c.controller, d.controller);
+        await Promise.all([c.controller.ready, d.controller.ready]);
+        check(document.querySelectorAll('script[src*="google.com/recaptcha"]').length === 1, 'reCAPTCHA script deduplication');
+        check(fixture.executions.length === 0, 'reCAPTCHA runs only on submit');
+        const ce = await c.controller.prepare(), de = await d.controller.prepare();
+        check(ce.challenges['recaptcha-v3'] !== de.challenges['recaptcha-v3'], 'Independent reCAPTCHA tokens');
+        check(fixture.executions[0].options.action === 'action-c' && fixture.executions[1].options.action === 'action-d', 'Per-form actions');
+        check(!c.form.querySelector('[name="g-recaptcha-response"]'), 'No duplicate provider evidence');
+        check((await c.controller.prepare()).challenges['recaptcha-v3'] !== ce.challenges['recaptcha-v3'], 'reCAPTCHA token refresh');
+        let resolveToken;
+        fixture.pending = new Promise((resolve) => { resolveToken = resolve; });
+        const stale = c.controller.prepare();
+        await Promise.resolve();
+        c.controller.destroy();
+        resolveToken('stale-token');
+        await rejects(stale, 'Destroy aborts pending reCAPTCHA');
+        check(c.form.children.length === 0, 'reCAPTCHA DOM cleanup');
+        fixture.pending = null;
+
+        const e = make('e', 'hcaptcha', 'site-e'), f = make('f', 'hcaptcha', 'site-f');
+        controllers.push(e.controller, f.controller);
+        await Promise.all([e.controller.ready, f.controller.ready]);
+        const [eid, fid] = [...fixture.widgets.keys()].filter((key) => String(key).startsWith('hcaptcha-'));
+        check(document.querySelectorAll('script[src*="js.hcaptcha.com"]').length === 1, 'hCaptcha script deduplication');
+        check(document.querySelector('script[src*="js.hcaptcha.com"]').nonce === 'fixture-nonce', 'hCaptcha CSP nonce');
+        check(document.querySelector('script[src*="js.hcaptcha.com"]').src.includes('recaptchacompat=off'), 'hCaptcha leaves grecaptcha alone');
+        check(fixture.widgets.get(eid).options.sitekey === 'site-e' && fixture.widgets.get(fid).options.sitekey === 'site-f', 'Independent hCaptcha site keys');
+        check(fixture.widgets.get(eid).options.size === 'invisible', 'hCaptcha renders invisibly');
+        check(fixture.hcaptchaExecutions.length === 0, 'hCaptcha runs only on submit');
+        check(!e.form.querySelector('[name="h-captcha-response"]') && !e.form.querySelector('[name="g-recaptcha-response"]'), 'No duplicate hCaptcha evidence');
+        const ee = await e.controller.prepare();
+        check(ee.challenges.hcaptcha === `hcaptcha-${eid}-1` && fixture.hcaptchaExecutions[0].options.async === true, 'hCaptcha submit token');
+        check(new FormData(f.form).get('__protect[challenges][hcaptcha]') === '', 'Other hCaptcha form untouched');
+        const resetsBefore = fixture.resets.filter((item) => item === eid).length;
+        check((await e.controller.prepare()).challenges.hcaptcha !== ee.challenges.hcaptcha, 'hCaptcha token refresh');
+        check(fixture.resets.filter((item) => item === eid).length === resetsBefore + 1, 'A used hCaptcha widget is reset before it runs again');
+        const hcaptchaErrors = [];
+        e.form.addEventListener('protect:error', (event) => hcaptchaErrors.push(event.detail.code));
+        fixture.hcaptchaFailure = 'challenge-closed';
+        await rejects(e.controller.prepare(), 'A closed hCaptcha challenge rejects preparation');
+        check(hcaptchaErrors.includes('challenge-closed'), 'hCaptcha error code reaches protect:error');
+        check(new FormData(e.form).get('__protect[challenges][hcaptcha]') === '', 'A failed hCaptcha attempt clears evidence');
+        fixture.hcaptchaFailure = null;
+        check((await e.controller.prepare()).challenges.hcaptcha.startsWith(`hcaptcha-${eid}-`), 'Fresh hCaptcha token after an error');
+        e.controller.destroy();
+        check(fixture.removed.includes(eid) && !fixture.removed.includes(fid), 'Isolated hCaptcha cleanup');
+
+        const g = make('g', 'friendly-captcha', 'site-g', { endpoint: 'eu' }), h = make('h', 'friendly-captcha', 'site-h');
+        controllers.push(g.controller, h.controller);
+        await Promise.all([g.controller.ready, h.controller.ready]);
+        const [gw, hw] = fixture.friendlyWidgets;
+        check(document.querySelectorAll('script[src*="@friendlycaptcha/sdk@"]').length === 1, 'Friendly Captcha script deduplication');
+        check(document.querySelector('script[src*="@friendlycaptcha/sdk@"]').nonce === 'fixture-nonce', 'Friendly Captcha CSP nonce');
+        check(gw.options.sitekey === 'site-g' && hw.options.sitekey === 'site-h', 'Independent Friendly Captcha site keys');
+        check(gw.options.apiEndpoint === 'eu' && hw.options.apiEndpoint === 'global', 'Friendly Captcha endpoint follows the manifest');
+        check(gw.options.formFieldName === null && gw.options.startMode === 'focus', 'Friendly Captcha adds no field and starts on focus');
+        check(gw.starts === 0, 'Friendly Captcha does not start before focus or submit');
+        const idle = g.controller.prepare();
+        await until(() => gw.starts === 1, 'Friendly Captcha was not started at submit');
+        gw.complete('frc-1');
+        check((await idle).challenges['friendly-captcha'] === 'frc-1', 'Friendly Captcha submit token');
+        check(new FormData(h.form).get('__protect[challenges][friendly-captcha]') === '', 'Other Friendly Captcha form untouched');
+        const used = g.controller.prepare();
+        await until(() => gw.starts === 2, 'A used Friendly Captcha response was not replaced');
+        check(gw.resets === 1, 'A used Friendly Captcha widget is reset before it runs again');
+        gw.complete('frc-2');
+        check((await used).challenges['friendly-captcha'] === 'frc-2', 'Friendly Captcha token refresh');
+        gw.reset();
+        gw.state = 'solving';
+        gw.complete('frc-focus');
+        check(new FormData(g.form).get('__protect[challenges][friendly-captcha]') === 'frc-focus', 'A puzzle solved on focus fills the evidence');
+        const startsBefore = gw.starts;
+        check((await g.controller.prepare()).challenges['friendly-captcha'] === 'frc-focus' && gw.starts === startsBefore, 'A puzzle solved before submit is used without running again');
+        gw.complete('frc-expiring');
+        gw.expire();
+        check(new FormData(g.form).get('__protect[challenges][friendly-captcha]') === '', 'Expired Friendly Captcha response cleared');
+        const afterExpiry = g.controller.prepare();
+        await until(() => gw.starts === startsBefore + 1, 'Friendly Captcha did not restart after expiry');
+        gw.complete('frc-3');
+        check((await afterExpiry).challenges['friendly-captcha'] === 'frc-3', 'Fresh Friendly Captcha token after expiry');
+        const friendlyErrors = [];
+        g.form.addEventListener('protect:error', (event) => friendlyErrors.push(event.detail.code));
+        const networkFailure = g.controller.prepare();
+        await until(() => gw.state === 'solving', 'Friendly Captcha did not start after a used response');
+        gw.fail('network_error');
+        await rejects(networkFailure, 'A Friendly Captcha error rejects preparation');
+        check(friendlyErrors.includes('network_error'), 'Friendly Captcha error code reaches protect:error');
+        const retried = g.controller.prepare();
+        await until(() => gw.state === 'solving', 'Friendly Captcha did not retry after a network error');
+        gw.complete('frc-4');
+        check((await retried).challenges['friendly-captcha'] === 'frc-4', 'A network error is not terminal');
+        const invalid = g.controller.prepare();
+        await until(() => gw.state === 'solving', 'Friendly Captcha did not start');
+        gw.fail('sitekey_invalid');
+        await rejects(invalid, 'An invalid site key rejects preparation');
+        const friendlyStarts = gw.starts;
+        await rejects(g.controller.prepare(), 'An invalid site key rejects the next attempt');
+        check(gw.starts === friendlyStarts, 'An invalid site key rejects without running again');
+        g.controller.reset();
+        const afterReset = g.controller.prepare();
+        await until(() => gw.starts === friendlyStarts + 1, 'Friendly Captcha did not start after reset');
+        gw.complete('frc-5');
+        check((await afterReset).challenges['friendly-captcha'] === 'frc-5', 'Reset clears an invalid site key error');
+        const abandoned = g.controller.prepare();
+        await until(() => gw.state === 'solving', 'Friendly Captcha did not start');
+        g.controller.destroy();
+        await rejects(abandoned, 'Destroy aborts a pending Friendly Captcha');
+        check(gw.destroyed && !hw.destroyed, 'Isolated Friendly Captcha cleanup');
+        gw.complete('late-friendly');
+        check(g.form.children.length === 0, 'A late Friendly Captcha response cannot restore removed fields');
+
+        const replacement = mountProtection(d.form, { version: 1, instanceId: 'replacement', preparation: 'new-proof', issuedAt: Math.floor(Date.now()/1000), expiresAt: Math.floor(Date.now()/1000)+300, honeypot: null, javascript: false, challenges: [] });
+        controllers.push(replacement);
+        check((await replacement.prepare()).preparation === 'new-proof', 'Remount replaces old evidence');
+        check(!d.form.querySelector('[name="__protect[challenges][recaptcha-v3]"]'), 'Remount removes old challenge fields');
+        output.textContent = `Passed ${checks} browser assertions`;
+        window.testResult = { passed: true, checks };
+    } catch (error) {
+        output.textContent = error.stack;
+        window.testResult = { passed: false, checks, error: String(error) };
+    } finally {
+        controllers.forEach((c) => c.destroy());
+    }
+});
+</script>
+</html>

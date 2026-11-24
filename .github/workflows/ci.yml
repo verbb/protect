@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  php:
+    name: PHP ${{ matrix.php }} on ${{ matrix.lane }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.3'
+            lane: current
+            composer: install
+          - php: '8.2'
+            lane: lowest installable
+            composer: update --prefer-lowest --prefer-stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: bcmath, gd, intl, mbstring, pdo_sqlite, zip
+          tools: composer:v2
+          coverage: none
+      - run: composer ${{ matrix.composer }} --no-interaction --no-progress
+      - run: ./vendor/bin/pest
+  browser:
+    name: Browser package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run typecheck
+      - run: npm test

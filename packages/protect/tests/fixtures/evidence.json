@@ -1,0 +1,20 @@
+{
+    "evidence": {
+        "version": 1,
+        "preparation": "Zjc5YWU4OWI4MDVlZmZiNmQ2MjJkNzAwYTEyZGY0NmE0NzIwZTliNDc1M2UzYjY3ODIyZmQ0OWFlMGZmOGRmOHsidiI6MSwibm9uY2UiOiJkZGNmYjZlZDY2MWJjZWUwZTNhMTIyZWI5NTlkZDJjMTNhNzU5YzljNGI2YjU2Y2YiLCJpc3N1ZWRBdCI6MTgwMDAwMDAwMCwiZXhwaXJlc0F0IjoxODAwMDg2NDAwLCJhY3Rpb24iOiJyb3VuZC10cmlwLnN1Ym1pdCIsInN1YmplY3QiOiIiLCJwbGFuIjoiMzI3YzNmMzMxNjQwMjY4MzI3OTM5YmZlYzA4ODlmNTdmYTY5ODVjODJmZjBkMDljMmI4OTYyMjY0ZTY1MTcxMSIsImhvbmV5cG90IjoiZGZhYzA2Nzc4YjE4YTdlMWExNDk3ZjQ1In0=",
+        "honeypot": {
+            "dfac06778b18a7e1a1497f45": ""
+        },
+        "javascript": "1",
+        "challenges": {
+            "turnstile": "fixture-token"
+        }
+    },
+    "fields": {
+        "__protect[version]": "1",
+        "__protect[preparation]": "Zjc5YWU4OWI4MDVlZmZiNmQ2MjJkNzAwYTEyZGY0NmE0NzIwZTliNDc1M2UzYjY3ODIyZmQ0OWFlMGZmOGRmOHsidiI6MSwibm9uY2UiOiJkZGNmYjZlZDY2MWJjZWUwZTNhMTIyZWI5NTlkZDJjMTNhNzU5YzljNGI2YjU2Y2YiLCJpc3N1ZWRBdCI6MTgwMDAwMDAwMCwiZXhwaXJlc0F0IjoxODAwMDg2NDAwLCJhY3Rpb24iOiJyb3VuZC10cmlwLnN1Ym1pdCIsInN1YmplY3QiOiIiLCJwbGFuIjoiMzI3YzNmMzMxNjQwMjY4MzI3OTM5YmZlYzA4ODlmNTdmYTY5ODVjODJmZjBkMDljMmI4OTYyMjY0ZTY1MTcxMSIsImhvbmV5cG90IjoiZGZhYzA2Nzc4YjE4YTdlMWExNDk3ZjQ1In0=",
+        "__protect[javascript]": "1",
+        "__protect[honeypot][dfac06778b18a7e1a1497f45]": "",
+        "__protect[challenges][turnstile]": "fixture-token"
+    }
+}

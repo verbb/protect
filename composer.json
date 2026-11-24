@@ -1,0 +1,62 @@
+{
+    "name": "verbb/protect",
+    "description": "Shared protection infrastructure for untrusted user-generated actions.",
+    "type": "library",
+    "version": "1.0.0-dev",
+    "support": {
+        "email": "support@verbb.io",
+        "issues": "https://github.com/verbb/protect/issues?state=open",
+        "source": "https://github.com/verbb/protect",
+        "docs": "https://github.com/verbb/protect",
+        "rss": "https://github.com/verbb/protect/commits/craft-5.atom"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Verbb",
+            "homepage": "https://verbb.io"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "craftcms/cms": "^5.10.0",
+        "verbb/base": "^3.0.0"
+    },
+    "require-dev": {
+        "pestphp/pest": "^3.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "verbb\\protect\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "craftcms/plugin-installer": false,
+            "pestphp/pest-plugin": true,
+            "yiisoft/yii2-composer": true
+        }
+    },
+    "scripts": {
+        "test": "./vendor/bin/pest",
+        "fixtures": "@php tests/bin/generate-round-trip-fixtures.php"
+    },
+    "archive": {
+        "exclude": [
+            "/.cache",
+            "/vendor",
+            "/node_modules",
+            "/docs/node_modules",
+            "/docs/.vitepress/cache",
+            "/docs/.vitepress/dist",
+            "/packages/*/node_modules",
+            "/.phpunit.cache",
+            "/docs/.vitepress/.temp"
+        ]
+    }
+}
