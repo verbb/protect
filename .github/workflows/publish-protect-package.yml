@@ -1,0 +1,166 @@
+name: Publish Protect Package
+
+# Publishes @verbb/protect to npm from a reviewed release commit on craft-5, through npm's trusted
+# publishing, so no npm token is stored anywhere. It only runs when dispatched.
+#
+# Set the version with `node scripts/release-version.mjs <version>`, commit and push it, then dispatch
+# this workflow with that commit's full SHA and the same version. The validate job checks and packs the
+# commit, and the publish job waits for approval in the npm-publish environment before publishing that
+# exact tarball. A version npm already has is refused, since npm never replaces one.
+
+on:
+    workflow_dispatch:
+        inputs:
+            release_sha:
+                description: Full reviewed release commit SHA on craft-5
+                required: true
+                type: string
+            release_version:
+                description: The version being released, such as 1.0.1 or 1.1.0-beta.1. It must match composer.json.
+                required: true
+                type: string
+            channel:
+                description: npm distribution channel. Stable versions go to latest, prereleases to next.
+                required: true
+                default: latest
+                type: choice
+                options:
+                    - latest
+                    - next
+
+env:
+    RELEASE_SHA: ${{ inputs.release_sha }}
+    RELEASE_VERSION: ${{ inputs.release_version }}
+    RELEASE_CHANNEL: ${{ inputs.channel }}
+
+concurrency:
+    group: protect-npm-publish
+    cancel-in-progress: false
+
+jobs:
+    validate:
+        if: github.ref == 'refs/heads/craft-5'
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        permissions:
+            contents: read
+        steps:
+            - name: Check out reviewed commit
+              uses: actions/checkout@v6
+              with:
+                  ref: ${{ env.RELEASE_SHA }}
+                  fetch-depth: 0
+                  persist-credentials: false
+
+            - name: Verify commit belongs to craft-5
+              run: |
+                  if [[ ! "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+                    echo 'A full lowercase commit SHA is required.' >&2
+                    exit 1
+                  fi
+                  test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+                  git fetch origin craft-5
+                  git merge-base --is-ancestor "$RELEASE_SHA" origin/craft-5
+
+            - name: Set up Node
+              uses: actions/setup-node@v6
+              with:
+                  node-version: '24'
+                  package-manager-cache: false
+
+            - name: Install dependencies
+              run: npm ci
+
+            # Composer, npm and the bundle's banner must carry one version, and it must be the one asked for.
+            - name: Verify release version and channel
+              run: |
+                  node scripts/release-version.mjs --publishable
+                  actual="$(node -p 'require("./packages/protect/package.json").version')"
+                  if [[ "$actual" != "$RELEASE_VERSION" ]]; then
+                    echo "The commit is at $actual, not $RELEASE_VERSION." >&2
+                    exit 1
+                  fi
+                  if [[ "$RELEASE_VERSION" == *-* && "$RELEASE_CHANNEL" != next ]]; then
+                    echo "$RELEASE_VERSION is a prerelease, so it goes to next." >&2
+                    exit 1
+                  fi
+                  if [[ "$RELEASE_VERSION" != *-* && "$RELEASE_CHANNEL" != latest ]]; then
+                    echo "$RELEASE_VERSION is stable, so it goes to latest." >&2
+                    exit 1
+                  fi
+
+            - name: Type check
+              run: npm run typecheck
+
+            - name: Install Chromium for the browser tests
+              run: npx playwright install --with-deps chromium
+
+            # Builds the package, then runs its tests, including the tarball and committed bundle checks.
+            - name: Build and test the package
+              run: npm test
+
+            - name: Pack the release tarball
+              working-directory: packages/protect
+              run: |
+                  mkdir -p "$RUNNER_TEMP/protect-tarball"
+                  npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP/protect-tarball"
+
+            - name: Reject regenerated repository files
+              run: |
+                  if [[ -n "$(git status --porcelain)" ]]; then
+                    echo 'Build or pack regenerated repository files:' >&2
+                    git status --short
+                    git diff --stat
+                    exit 1
+                  fi
+
+            - name: Transfer the tarball to the publish job
+              uses: actions/upload-artifact@v4
+              with:
+                  name: protect-release-tarball
+                  path: ${{ runner.temp }}/protect-tarball/*.tgz
+                  if-no-files-found: error
+                  retention-days: 7
+
+    publish:
+        needs: validate
+        if: github.ref == 'refs/heads/craft-5'
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        environment: npm-publish
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - name: Set up Node
+              uses: actions/setup-node@v6
+              with:
+                  node-version: '24'
+                  package-manager-cache: false
+
+            # Trusted publishing needs npm 11.5.1 or later.
+            - name: Check supported npm CLI
+              run: |
+                  node --version
+                  npm --version
+                  node -e 'const version = require("node:child_process").execFileSync("npm", ["--version"], { encoding: "utf8" }).trim(); const [major, minor, patch] = version.split(".").map(Number); if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) process.exit(1)'
+
+            - name: Receive the validated tarball
+              uses: actions/download-artifact@v4
+              with:
+                  name: protect-release-tarball
+                  path: ${{ runner.temp }}/protect-tarball
+
+            - name: Refuse a version npm already has
+              run: |
+                  existing="$(npm view "@verbb/protect@$RELEASE_VERSION" version --prefer-online 2>/dev/null || true)"
+                  if [[ -n "$existing" ]]; then
+                    echo "npm already has @verbb/protect@$RELEASE_VERSION. Release a new version instead." >&2
+                    exit 1
+                  fi
+
+            - name: Publish with npm OIDC
+              run: |
+                  tarball="$RUNNER_TEMP/protect-tarball/verbb-protect-$RELEASE_VERSION.tgz"
+                  test -f "$tarball"
+                  npm publish "$tarball" --tag "$RELEASE_CHANNEL" --access public --ignore-scripts
