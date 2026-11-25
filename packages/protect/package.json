@@ -1,6 +1,6 @@
 {
   "name": "@verbb/protect",
-  "version": "1.0.0-dev",
+  "version": "1.0.0",
   "description": "Form protection for the browser, with challenge widgets and submission evidence for the verbb/protect Composer library.",
   "keywords": [
     "craftcms",

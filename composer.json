@@ -2,7 +2,7 @@
     "name": "verbb/protect",
     "description": "Shared protection infrastructure for untrusted user-generated actions.",
     "type": "library",
-    "version": "1.0.0-dev",
+    "version": "1.0.0",
     "support": {
         "email": "support@verbb.io",
         "issues": "https://github.com/verbb/protect/issues?state=open",
